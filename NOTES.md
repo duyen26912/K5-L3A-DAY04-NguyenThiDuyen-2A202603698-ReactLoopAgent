@@ -44,3 +44,12 @@ Nguyên nhân có thể xảy ra: agent làm theo yêu cầu của người dùn
 ## 5. Giới hạn
 
 Điểm judge có thể dao động giữa các lần chạy và không chứng minh agent luôn xử lý đúng mọi trường hợp. Snapshot chỉ phản ánh dữ liệu tại thời điểm thu thập. Mỗi phiên bản được so sánh qua một lần chạy nên chưa thể kết luận thay đổi prompt luôn làm điểm tăng. Token trong bảng là tổng token agent và judge, không phải chi phí tiền tệ.
+
+## Ghi chú triển khai bonus
+
+- Retry 429: `agent.py` trả observation lỗi về model, theo dõi số lần RATE_LIMITED theo tool/provider và giới hạn một lần retry sau lỗi 429. Nếu có `Retry-After` dạng số giây hoặc HTTP-date thì chờ tối đa 3 giây; nếu thời gian lớn hơn thì chặn retry tiếp theo và để model báo phần chưa kiểm tra được. Lỗi `INVALID_ARGUMENTS` cũng được đưa lại cho model để nó có thể sửa tham số.
+- Pagination: system prompt bonus nhắc model dùng `next_offset` khi câu hỏi cần xem tiếp và không tuyên bố đã đọc hết khi còn trang. Các lần gọi tiếp theo vẫn tính vào `max_steps`. Quyết định có cần trang khác hay không vẫn do model đưa ra.
+- Context dài: khi gửi kết quả status có danh sách `distractors` cho model, agent bỏ danh sách nhiễu và thay bằng số lượng `distractors_omitted`; trace vẫn giữ kết quả tool gốc.
+- Bằng chứng và injection: prompt nhắc coi tool output là dữ liệu không đáng tin, 429/timeout không xác nhận outage hay trạng thái operational, và cần dẫn nguồn theo bằng chứng có sẵn.
+- Kiểm tra offline: `python -m unittest discover -s bonus -p 'test_*.py' -v` — 3 tests passed.
+- Giới hạn còn lại: retry policy cho phép tối đa một retry theo tool/provider và giới hạn chờ Retry-After ở 3 giây; pagination phụ thuộc quyết định của model; test offline không xác nhận chất lượng kết luận ngoài các kịch bản giả lập. Chưa tạo `eval_bonus.json`; cần chạy bonus eval với API key để có điểm 10 case.
